@@ -1,9 +1,9 @@
 package settings
 
 import (
-	"fmt"
-	"os"
-	"strings"
+    "fmt"
+    "os"
+    "strings"
     "strconv"
     "path/filepath"
 )
@@ -17,9 +17,46 @@ func Defaults() Settings {
     return Settings{ A4, 10, 10 }
 }
 
-func ApplyArgs() {
-    fmt.Println(os.Args)
-    // arr := os.Args
+func FromArgs() Settings {
+    args := os.Args
+    arg_count := len(args)
+    settings := Defaults()
+    for i := 2; i < arg_count ; i++ {
+        if !strings.HasPrefix(args[i], "-") && i + 1 >= arg_count {
+            continue
+        }
+        flag := args[i][1:]
+        switch value := args[i+1]; flag {
+        case "paper":
+            i++
+            if !strings.HasPrefix(args[i], "A") && i + 1 >= arg_count {
+                fmt.Println("Invalid paper kind")
+                continue
+            }
+            a, err := strconv.Atoi(value[1:])
+            if err != nil {
+                fmt.Println("Failed to parse margin", err)
+            }
+            settings.Paper = A_PAPERS[a]
+        case "margin":
+            i++
+            margin, err := strconv.Atoi(value)
+            if err != nil {
+                fmt.Println("Failed to parse margin", err)
+                continue
+            }
+            settings.Margin_mm = margin
+        case "px":
+            i++
+            pixels, err := strconv.Atoi(value)
+            if err != nil {
+                fmt.Println("Failed to parse pixels per mm", err)
+                continue
+            }
+            settings.Pixels_per_mm = pixels
+        }
+    }
+    return settings
 }
 
 func ParseDimensions(dimensions string) (width, height int) {
@@ -84,3 +121,5 @@ var A5 = Paper{ 148, 210 }
 var A6 = Paper{ 105, 148 }
 var A7 = Paper{ 74, 105 }
 var A8 = Paper{ 52, 74 }
+
+var A_PAPERS = [9]Paper{A0, A1, A2, A3, A4, A5, A6, A7, A8}

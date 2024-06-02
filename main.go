@@ -2,13 +2,13 @@ package main
 
 import (
     "template-generator/utils"
-	"fmt"
-	"image"
+    "fmt"
+    "image"
     "os"
-	"image/png"
-	"time"
-	_ "image/color"
-	_ "image/jpeg"
+    "image/png"
+    "time"
+    _ "image/color"
+    _ "image/jpeg"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
         return
     }
 
-    options := settings.Defaults()
+    options := settings.FromArgs()
     exe := settings.GetExecutableName()
     switch command := args[1]; command {
     case "create":
@@ -127,6 +127,8 @@ func saveImage(img image.NRGBA, path string) {
     fmt.Println("Saving image...")
     if err := png.Encode(imgFile, &img); err != nil {
         fmt.Println(err)
+        return
     }
+    fmt.Println("Saved as", path)
 }
 
