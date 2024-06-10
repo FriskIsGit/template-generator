@@ -7,6 +7,7 @@ import (
     "os"
     "image/png"
     "time"
+    "strings"
     _ "image/color"
     _ "image/jpeg"
 )
@@ -28,7 +29,7 @@ func main() {
             return
         }
         width, height := settings.ParseDimensions(args[2])
-        template := createImage(width, height, options.Pixels_per_mm)
+        template := createImage(width, height, options.PixelsPerMm)
         saveImage(template, "template.png")
         return
     case "replicate":
@@ -37,6 +38,10 @@ func main() {
             return
         }
         replicateTemplate(args[2], options)
+    case "list":
+    case "ls":
+        displayTemplates()
+        return
     default:
         settings.DisplayHelp();
         return
@@ -64,16 +69,16 @@ func replicateTemplate(templatePath string, options settings.Settings) {
     templateBounds := template.Bounds()
     fmt.Println("Extension detected:", ext, "| Template size:", templateBounds.Max)
 
-    canvas := createImage(options.Paper.Width_mm, options.Paper.Height_mm, options.Pixels_per_mm)
+    canvas := createImage(options.Paper.WidthMm, options.Paper.HeightMm, options.PixelsPerMm)
     canvasBounds := canvas.Bounds()
 
     canvas_w_px := canvasBounds.Max.X;
     canvas_h_px := canvasBounds.Max.Y;
     template_w_px := templateBounds.Max.X;
     template_h_px := templateBounds.Max.Y;
-    pixels_per_mm := options.Pixels_per_mm;
+    pixels_per_mm := options.PixelsPerMm;
 
-    margin_px := options.Margin_mm * pixels_per_mm
+    margin_px := options.MarginMm * pixels_per_mm
 
     pixelsWritten := 0
     start := time.Now()
@@ -130,5 +135,23 @@ func saveImage(img image.NRGBA, path string) {
         return
     }
     fmt.Println("Saved as", path)
+}
+
+func displayTemplates() {
+    files, err := os.ReadDir(".")
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    supportedExtensions := [3]string{"png", "jpg", "jpeg"}
+    for _, file := range files {
+        for _, ext := range supportedExtensions {
+            fileName := file.Name()
+            if strings.HasSuffix(fileName, ext) {
+                fmt.Println("-", fileName)
+            }
+        }
+    }
 }
 
