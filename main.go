@@ -1,157 +1,156 @@
 package main
 
 import (
-    "template-generator/utils"
-    "fmt"
-    "image"
-    "os"
-    "image/png"
-    "time"
-    "strings"
-    _ "image/color"
-    _ "image/jpeg"
+	"fmt"
+	"image"
+	_ "image/color"
+	_ "image/jpeg"
+	"image/png"
+	"os"
+	"strings"
+	"time"
 )
 
 func main() {
-    args := os.Args
-    arg_count := len(args)
-    if arg_count <= 1 {
-        settings.DisplayHelp();
-        return
-    }
+	args := os.Args
+	argCount := len(args)
+	if argCount <= 1 {
+		displayHelp()
+		return
+	}
 
-    options := settings.FromArgs()
-    exe := settings.GetExecutableName()
-    switch command := args[1]; command {
-    case "create":
-        if arg_count < 3 {
-            fmt.Println("Example usage:", exe, "create 50x20");
-            return
-        }
-        width, height := settings.ParseDimensions(args[2])
-        template := createImage(width, height, options.PixelsPerMm)
-        saveImage(template, "template.png")
-        return
-    case "replicate":
-        if arg_count < 3 {
-            fmt.Println("Example usage:", exe, "replicate template.png");
-            return
-        }
-        replicateTemplate(args[2], options)
-    case "list":
-    case "ls":
-        displayTemplates()
-        return
-    default:
-        settings.DisplayHelp();
-        return
-    }
+	options := fromArgs()
+	exe := getExecutableName()
+	switch command := args[1]; command {
+	case "create":
+		if argCount < 3 {
+			fmt.Println("Example usage:", exe, "create 50x20")
+			return
+		}
+		width, height := parseDimensions(args[2])
+		template := createImage(width, height, options.PixelsPerMm)
+		saveImage(template, "template.png")
+		return
+	case "replicate":
+		if argCount < 3 {
+			fmt.Println("Example usage:", exe, "replicate template.png")
+			return
+		}
+		replicateTemplate(args[2], options)
+	case "list":
+		fallthrough
+	case "ls":
+		displayTemplates()
+		return
+	default:
+		displayHelp()
+		return
+	}
 }
 
 type Cursor struct {
-    x, y int
+	x, y int
 }
 
-func replicateTemplate(templatePath string, options settings.Settings) {
-    file, err := os.Open(templatePath)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
-    defer file.Close()
+func replicateTemplate(templatePath string, options Settings) {
+	file, err := os.Open(templatePath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
 
-    template, ext, err := image.Decode(file)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	template, ext, err := image.Decode(file)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    templateBounds := template.Bounds()
-    fmt.Println("Extension detected:", ext, "| Template size:", templateBounds.Max)
+	templateBounds := template.Bounds()
+	fmt.Println("Extension detected:", ext, "| Template size:", templateBounds.Max)
 
-    canvas := createImage(options.Paper.WidthMm, options.Paper.HeightMm, options.PixelsPerMm)
-    canvasBounds := canvas.Bounds()
+	canvas := createImage(options.Paper.WidthMm, options.Paper.HeightMm, options.PixelsPerMm)
+	canvasBounds := canvas.Bounds()
 
-    canvas_w_px := canvasBounds.Max.X;
-    canvas_h_px := canvasBounds.Max.Y;
-    template_w_px := templateBounds.Max.X;
-    template_h_px := templateBounds.Max.Y;
-    pixels_per_mm := options.PixelsPerMm;
+	canvas_w_px := canvasBounds.Max.X
+	canvas_h_px := canvasBounds.Max.Y
+	template_w_px := templateBounds.Max.X
+	template_h_px := templateBounds.Max.Y
+	pixels_per_mm := options.PixelsPerMm
 
-    margin_px := options.MarginMm * pixels_per_mm
+	margin_px := options.MarginMm * pixels_per_mm
 
-    pixelsWritten := 0
-    start := time.Now()
-    for y := margin_px; y + template_h_px <= canvas_h_px - margin_px; y+=template_h_px {
-        for x := margin_px; x + template_w_px <= canvas_w_px - margin_px; x+=template_w_px {
-            canvasCursor := Cursor{ x, y }
-            templateCursor := Cursor{ 0, 0, }
+	pixelsWritten := 0
+	start := time.Now()
+	for y := margin_px; y+template_h_px <= canvas_h_px-margin_px; y += template_h_px {
+		for x := margin_px; x+template_w_px <= canvas_w_px-margin_px; x += template_w_px {
+			canvasCursor := Cursor{x, y}
+			templateCursor := Cursor{0, 0}
 
-            for templateCursor.y < template_h_px {
-                for templateCursor.x < template_w_px {
-                    color := template.At(templateCursor.x, templateCursor.y)
-                    canvas.Set(canvasCursor.x, canvasCursor.y, color)
-                    pixelsWritten++
-                    canvasCursor.x++
-                    templateCursor.x++
-                }
-                canvasCursor.x = x
-                templateCursor.x = 0
+			for templateCursor.y < template_h_px {
+				for templateCursor.x < template_w_px {
+					color := template.At(templateCursor.x, templateCursor.y)
+					canvas.Set(canvasCursor.x, canvasCursor.y, color)
+					pixelsWritten++
+					canvasCursor.x++
+					templateCursor.x++
+				}
+				canvasCursor.x = x
+				templateCursor.x = 0
 
-                canvasCursor.y++
-                templateCursor.y++
-            }
-        }
-    }
+				canvasCursor.y++
+				templateCursor.y++
+			}
+		}
+	}
 
-    taken := time.Since(start)
-    fmt.Println("Replicated", pixelsWritten, "pixels in", taken)
+	taken := time.Since(start)
+	fmt.Println("Replicated", pixelsWritten, "pixels in", taken)
 
-    saveImage(canvas, "generated.png");
+	saveImage(canvas, "generated.png")
 }
 
 func createImage(width_mm, height_mm, pixels_per_mm int) image.NRGBA {
 
-    pixel_width := width_mm * pixels_per_mm
-    pixel_height := height_mm * pixels_per_mm
+	pixel_width := width_mm * pixels_per_mm
+	pixel_height := height_mm * pixels_per_mm
 
-    rectangle := image.Rect(0, 0, pixel_width, pixel_height)
-    img := image.NewNRGBA(rectangle)
-    return *img
+	rectangle := image.Rect(0, 0, pixel_width, pixel_height)
+	img := image.NewNRGBA(rectangle)
+	return *img
 }
 
 func saveImage(img image.NRGBA, path string) {
-    imgFile, err := os.Create(path)
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	imgFile, err := os.Create(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    defer imgFile.Close()
+	defer imgFile.Close()
 
-    fmt.Println("Saving image...")
-    if err := png.Encode(imgFile, &img); err != nil {
-        fmt.Println(err)
-        return
-    }
-    fmt.Println("Saved as", path)
+	fmt.Println("Saving image...")
+	if err := png.Encode(imgFile, &img); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Saved as", path)
 }
 
 func displayTemplates() {
-    files, err := os.ReadDir(".")
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	files, err := os.ReadDir(".")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    supportedExtensions := [3]string{"png", "jpg", "jpeg"}
-    for _, file := range files {
-        for _, ext := range supportedExtensions {
-            fileName := file.Name()
-            if strings.HasSuffix(fileName, ext) {
-                fmt.Println("-", fileName)
-            }
-        }
-    }
+	supportedExtensions := [3]string{"png", "jpg", "jpeg"}
+	for _, file := range files {
+		for _, ext := range supportedExtensions {
+			fileName := file.Name()
+			if strings.HasSuffix(fileName, ext) {
+				fmt.Println("-", fileName)
+			}
+		}
+	}
 }
-
