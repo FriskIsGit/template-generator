@@ -51,7 +51,7 @@ func parseArgs(args []string) *Settings {
 		}
 		switch value := args[i+1]; arg {
 		case "-paper":
-			if !strings.HasPrefix(value, "A") {
+			if !strings.HasPrefix(value, "A") && !strings.HasPrefix(value, "a") {
 				FailExit(fmt.Sprintf("ERROR: Paper's size should start with letter 'A', given: %v\n", value))
 				break
 			}
