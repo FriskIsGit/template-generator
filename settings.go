@@ -33,82 +33,85 @@ func defaultSettings() Settings {
 	return Settings{A4, 10, 10}
 }
 
-func fromArgs() Settings {
-	args := os.Args
-	argCount := len(args)
+func parseArgs(args []string) *Settings {
 	settings := defaultSettings()
-	for i := 2; i < argCount; i++ {
-		if !strings.HasPrefix(args[i], "-") && i+1 >= argCount {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "-") {
 			continue
 		}
-		flag := args[i][1:]
-		switch value := args[i+1]; flag {
-		case "paper":
-			i++
-			if !strings.HasPrefix(args[i], "A") && i+1 >= argCount {
-				errPrintln("WARNING: Invalid paper kind", nil)
-				continue
+		switch arg {
+		case "-h", "-help", "--help":
+			displayHelp()
+			os.Exit(0)
+		}
+		if i+1 == len(args) {
+			FailExit(fmt.Sprintf("ERROR: Expected value after flag %v\n", arg))
+			break
+		}
+		switch value := args[i+1]; arg {
+		case "-paper":
+			if !strings.HasPrefix(value, "A") {
+				FailExit(fmt.Sprintf("ERROR: Paper's size should start with letter 'A', given: %v\n", value))
+				break
 			}
 			a, err := strconv.Atoi(value[1:])
 			if err != nil {
-				errPrintln("WARNING: Failed to parse paper size", err)
-				continue
+				FailExit(fmt.Sprintf("ERROR: Failed to parse paper's size from: %v\n", value[1:]))
+				break
 			}
-			settings.Paper = A_PAPERS[a]
-		case "margin":
+			if a < 0 || a >= len(A_PAPERS) {
+				FailExit(fmt.Sprintf("ERROR: Paper's A size is out of range, given: %v\n", a))
+				break
+			}
 			i++
+			settings.Paper = A_PAPERS[a]
+		case "-margin":
 			margin, err := strconv.Atoi(value)
 			if err != nil {
-				errPrintln("WARNING: Failed to parse margin", err)
-				continue
+				FailExit(fmt.Sprintf("ERROR: Failed to parse margin, given: %v\n", value))
+				break
 			}
-			settings.MarginMm = margin
-		case "px":
 			i++
+			settings.MarginMm = margin
+		case "-px":
 			pixels, err := strconv.Atoi(value)
 			if err != nil {
-				errPrintln("WARNING: Failed to parse pixels per mm", err)
-				continue
+				FailExit(fmt.Sprintf("ERROR: Failed to parse pixels per mm, given: %v\n", value))
+				break
 			}
+			i++
 			settings.PixelsPerMm = pixels
 		}
 	}
-	return settings
+	return &settings
 }
 
 func parseDimensions(dimensions string) (width, height int) {
 	x := strings.Index(dimensions, "x")
 	if x == -1 {
-		errPrintln("WARNING: No `x` delimiter found", nil)
-		os.Exit(1)
+		FailExit("ERROR: No `x` delimiter found in dimensions")
 	}
-	width, l_err := strconv.Atoi(dimensions[:x])
-	if l_err != nil {
-		errPrintln("WARNING: Failed to parse `width`", l_err)
-		os.Exit(1)
+	width, err := strconv.Atoi(dimensions[:x])
+	if err != nil {
+		FailExit("ERROR: Failed to parse `width`")
 	}
-	height, r_err := strconv.Atoi(dimensions[x+1:])
-	if r_err != nil {
-		errPrintln("WARNING: Failed to parse `height`", r_err)
-		os.Exit(1)
+	height, err = strconv.Atoi(dimensions[x+1:])
+	if err != nil {
+		FailExit("ERROR: Failed to parse `height`")
 	}
 	return width, height
 }
 
 func getExecutableName() string {
-	path, err := os.Executable()
+	exec, err := os.Executable()
 	if err != nil {
-		return "template"
+		exec = os.Args[0]
 	}
-	path = filepath.Base(path)
-	dot := strings.Index(path, ".")
-	if dot == -1 {
-		return path
-	}
-	return path[:dot]
+	return filepath.Base(exec)
 }
 
-var VERSION string = "1.0.2"
+const VERSION = "1.0.3"
 
 func displayHelp() {
 	exe := getExecutableName()
@@ -126,16 +129,14 @@ func displayHelp() {
 	fmt.Println("    -paper A4            Sets paper size (A0-A8) (default: A4)")
 	fmt.Println("    -px 10               Pixels per millimeter (default: 10) [px]")
 	fmt.Println("    -margin 10           Sets margin to each side during replication (default: 10) [mm]")
+	fmt.Println("    -h, --help           Displays this help message (any order)")
 	fmt.Println()
 	fmt.Println("Example usage:")
 	fmt.Println("    ", exe, "create 50x20 -px 16")
 	fmt.Println("    ", exe, "replicate label.jpg -margin 20")
 }
 
-func errPrintln(format string, err error) {
-	if err == nil {
-		fmt.Fprintf(os.Stderr, format+"\n")
-		return
-	}
-	fmt.Fprintf(os.Stderr, format+" [%s]\n", err.Error())
+func FailExit(message string) {
+	fmt.Println(message)
+	os.Exit(1)
 }

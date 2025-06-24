@@ -13,33 +13,31 @@ import (
 
 func main() {
 	args := os.Args
-	argCount := len(args)
-	if argCount <= 1 {
+	if len(args) <= 1 {
 		displayHelp()
 		return
 	}
 
-	options := fromArgs()
 	exe := getExecutableName()
 	switch command := args[1]; command {
 	case "create":
-		if argCount < 3 {
+		if len(args) < 3 {
 			fmt.Println("Example usage:", exe, "create 50x20")
 			return
 		}
 		width, height := parseDimensions(args[2])
+		options := parseArgs(args[3:])
 		template := createImage(width, height, options.PixelsPerMm)
 		saveImage(template, "template.png")
 		return
 	case "replicate":
-		if argCount < 3 {
+		if len(args) < 3 {
 			fmt.Println("Example usage:", exe, "replicate template.png")
 			return
 		}
+		options := parseArgs(args[3:])
 		replicateTemplate(args[2], options)
-	case "list":
-		fallthrough
-	case "ls":
+	case "list", "ls":
 		displayTemplates()
 		return
 	default:
@@ -52,7 +50,7 @@ type Cursor struct {
 	x, y int
 }
 
-func replicateTemplate(templatePath string, options Settings) {
+func replicateTemplate(templatePath string, options *Settings) {
 	file, err := os.Open(templatePath)
 	if err != nil {
 		fmt.Println(err)
@@ -110,17 +108,19 @@ func replicateTemplate(templatePath string, options Settings) {
 	saveImage(canvas, "generated.png")
 }
 
-func createImage(width_mm, height_mm, pixels_per_mm int) image.NRGBA {
+const GB = 1024 * 1024 * 1024
 
+func createImage(width_mm, height_mm, pixels_per_mm int) *image.NRGBA {
 	pixel_width := width_mm * pixels_per_mm
 	pixel_height := height_mm * pixels_per_mm
-
+	if pixel_width*pixel_height*4 > GB {
+		FailExit("Template image size exceeds 1GB. Reduce dimensions or pixels per mm")
+	}
 	rectangle := image.Rect(0, 0, pixel_width, pixel_height)
-	img := image.NewNRGBA(rectangle)
-	return *img
+	return image.NewNRGBA(rectangle)
 }
 
-func saveImage(img image.NRGBA, path string) {
+func saveImage(img *image.NRGBA, path string) {
 	imgFile, err := os.Create(path)
 	if err != nil {
 		fmt.Println(err)
@@ -130,7 +130,7 @@ func saveImage(img image.NRGBA, path string) {
 	defer imgFile.Close()
 
 	fmt.Println("Saving image...")
-	if err := png.Encode(imgFile, &img); err != nil {
+	if err := png.Encode(imgFile, img); err != nil {
 		fmt.Println(err)
 		return
 	}
